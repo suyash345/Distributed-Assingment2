@@ -1,22 +1,46 @@
-import java.net.*;
-import java.io.*;
+import java.net.Socket;
+import java.net.ServerSocket;
 import java.util.ArrayList;
+import java.util.Scanner;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.IOException;
+import java.io.File;
+import java.io.FileNotFoundException;
+
+//import com.google.gson.Gson;
+
 
 public class AggregationServer {
-    private static ArrayList <ClientHandler> clients = new ArrayList<>(); // to store all the threads. 
-    private static final int PORT = 4567;
-    public static void main(String[] args) throws IOException{
-    ServerSocket listener = new ServerSocket(PORT); // make the socket   
-    while(true){           
-        System.out.println("Waiting for a connection");
-        Socket client = listener.accept(); // establish the connection
-        System.out.println("A New Client has Connected!");
-        PrintWriter out = new PrintWriter(client.getOutputStream(),true); // the object to send data
-        ClientHandler clientThread = new ClientHandler(client,"GET"); 
-        Thread thread = new Thread(clientThread);
-        thread.start();
-        clients.add(clientThread);  
-    }
-    }
+    public static void main(String[] args) {
+        ServerSocket serverSocket = null;
+        try {
+            serverSocket = new ServerSocket(4567);
+            while(!serverSocket.isClosed()){
+                // accept request
+                Socket socket = serverSocket.accept(); // this is closed in ClientHandler
+                System.out.println("A new client has connected!");
+                // start the clientHandler with a new thread.
+                ClientHandler clientHandler = new ClientHandler(socket);
+                Thread thread = new Thread(clientHandler);
+                thread.start();
+        }
+    }  catch (IOException e){
+            e.printStackTrace();}
+        finally {
+            close(serverSocket);
+        }
 
+    }
+    public static void close(ServerSocket serverSocket){
+        try{
+            if(serverSocket!=null){
+                serverSocket.close();
+            }
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

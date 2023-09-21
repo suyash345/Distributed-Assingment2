@@ -1,66 +1,109 @@
-import java.io.*;
-import java.net.*;
+import java.net.Socket;
+import java.net.ServerSocket;
+import java.util.ArrayList;
 import java.util.Scanner;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.IOException;
+import java.io.File;
+import java.io.FileNotFoundException;
+//import com.google.gson.Gson;
 
 public class ClientHandler implements Runnable {
-    private Socket client;
-    private BufferedReader input_from_content_server;
-    private PrintWriter output_from_server_to_send_Client;
-    private String PUT_OR_GET_METHOD;
+    private Socket socket;
 
-    public ClientHandler(Socket clientSocket, String method) {
+    private BufferedReader bufferedReader;
+    private BufferedWriter bufferedWriter;
+    public ClientHandler(Socket socket){
         try {
-            this.client = clientSocket;
-            this.input_from_content_server = new BufferedReader(new InputStreamReader(this.client.getInputStream()));
-            this.output_from_server_to_send_Client = new PrintWriter(this.client.getOutputStream(), true);
-            this.PUT_OR_GET_METHOD = method;
-        } catch (IOException e) {
+            this.socket = socket;
+            this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+        } catch(IOException e){
             e.printStackTrace();
         }
     }
-
     @Override
     public void run() {
-
-
-    }
-
-public void readFile() {
-    Scanner myReader = null;
-    try {
-        File myObj = new File("data_server.txt");
-        myReader = new Scanner(myObj);
-        StringBuilder weather_data_that_needs_to_be_sent = new StringBuilder();
-
-        while (myReader.hasNextLine()) {
-            String data = myReader.nextLine();
-            weather_data_that_needs_to_be_sent.append(data);
+        String request = find_request();  // the first line is the type of request PUT/GET
+        while (socket.isConnected() && !socket.isClosed()){
+            try{
+                if(request.equals("GET")){
+                    getMethod(bufferedWriter);
+                    return;
+                }
+                else if (request.equals("PUT")) {
+                    putMethod(bufferedReader, bufferedWriter);
+                    return;
+            }
+                else {
+                    close(socket,bufferedReader,bufferedWriter);
+                    return;
+                }
+            }
+            catch (Exception e){
+                e.printStackTrace();
+                close(socket,bufferedReader,bufferedWriter);
         }
-
-        String outputData = weather_data_that_needs_to_be_sent.toString();
-        //System.out.print(outputData);  
-
-        if (output_from_server_to_send_Client != null) {
-            output_from_server_to_send_Client.print(outputData);
-            output_from_server_to_send_Client.flush();  
-            //System.out.println("output_from_server_to_send_Client is null.");
-        }
-
-    } catch (IOException e) {
-        e.printStackTrace();
-    } finally {
-        if (myReader != null) {
-            myReader.close();
         }
     }
+    public void close(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter){
+        try{
+            if(socket!=null){
+                socket.close();
+            }
+            if(bufferedReader!=null){
+                bufferedReader.close();
+            }
+            if(bufferedWriter!=null){
+                bufferedWriter.close();
+            }
+        } catch (IOException e ){
+            e.printStackTrace();
+        }
+    }
+    public String find_request(){
+        String request = "";
+        try{
+            String first_line = bufferedReader.readLine();
+            String[] first_line_list = first_line.split(" ");
+            request= first_line_list[0];
+        }
+        catch(IOException e) {
+            e.printStackTrace();
+        }
+        return request;
+    }
+
+    public void getMethod(BufferedWriter bufferedWriter){
+        try{
+            bufferedWriter.write("Got Your Message!"); // whatever that is sent is  here
+            bufferedWriter.newLine();
+            bufferedWriter.flush();
+        } catch(IOException e){
+            e.printStackTrace();
+        } finally {
+            return;
+        }
+
+    }
+    public void putMethod(BufferedReader bufferedReader,BufferedWriter bufferedWriter){
+        try{
+            String data = bufferedReader.readLine(); // for the data that is sent.
+            System.out.println(data);
+            bufferedWriter.write("Got put request and sucessfully inputted into the file");  // whatever is sent is here
+            bufferedWriter.newLine();
+            bufferedWriter.flush();
+        }
+        catch (IOException e){
+            e.printStackTrace();
+        }
+        finally{
+            return;
+        }
+    }
+
+
 }
-
-public void writeFile(String input) {
-    try (FileWriter fileWriter = new FileWriter("data_server.txt", true)) {
-        fileWriter.append(input).append(System.lineSeparator());
-        System.out.println("Data appended: " + input);
-    } catch (IOException e) {
-        e.printStackTrace();
-    }
-}
-
