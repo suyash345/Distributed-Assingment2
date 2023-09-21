@@ -8,7 +8,11 @@ import java.io.OutputStreamWriter;
 import java.util.Scanner;
 import java.io.File;
 import java.io.FileNotFoundException;
-//import com.google.gson.Gson;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import java.io.FileWriter;
+import java.io.FileReader;
+import java.util.ArrayList;
 public class ContentServer {
     private static final String SERVER_IP = "localhost";
     private static final int SERVER_PORT = 4567;
@@ -18,13 +22,16 @@ public class ContentServer {
         Socket socket = null;
         BufferedReader bufferedReader = null;
         BufferedWriter bufferedWriter = null;
+        convertToJson();
         while (true) {
             try {
                 socket = new Socket(SERVER_IP, SERVER_PORT);
                 bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
                 Scanner scanner = new Scanner(System.in);
-                String dataToSend = readFile();
+                String dataToSend = jsonObjectToString();
+                System.out.println(dataToSend);
+
 
                 // for the request
                 incrementLamportTime(); //  should only have to increment once, since the PUT and body are in the same request
@@ -75,26 +82,6 @@ public class ContentServer {
         }
     }
 
-    public static String readFile() {
-        String fileContent = "";
-        try {
-            File myObj = new File("inputfile.txt");
-
-            Scanner myReader = new Scanner(myObj);
-            while (myReader.hasNextLine()) {
-                String data = myReader.nextLine();
-                fileContent += data;
-            }
-            myReader.close();
-            return fileContent;
-
-        } catch (FileNotFoundException e) {
-            System.out.println("An error occurred.");
-            e.printStackTrace();
-        }
-        return "";
-    }
-
     public static void manageLamportTime(int time_received_from_server) {
         if (time_received_from_server > my_time_Lamport) {
             my_time_Lamport = time_received_from_server + 1;
@@ -105,6 +92,43 @@ public class ContentServer {
 
     public static void incrementLamportTime() {
         my_time_Lamport = my_time_Lamport + 1;
+    }
+
+    public static void convertToJson() {
+        String fileContent = "";
+        try {
+            File reader = new File("inputfile.txt");
+            FileWriter writer = new FileWriter("input.json");
+            writer.write("{\n");
+            Scanner myReader = new Scanner(reader);
+            ArrayList<String> jsonLines = new ArrayList<>();
+            while (myReader.hasNextLine()) {
+                String data = myReader.nextLine();
+                String[] parts = data.split(":");
+                jsonLines.add("\"" + parts[0].trim() + "\":\"" + parts[1].trim() + "\"");
+            }
+            writer.write(String.join(",\n", jsonLines));
+            writer.write("\n}");
+            myReader.close();
+            writer.close();
+
+        } catch (FileNotFoundException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public static String jsonObjectToString(){
+        try{
+            FileReader fileReader = new FileReader("input.json");
+            Gson gson = new Gson();
+            JsonObject jsonObject = gson.fromJson(fileReader,JsonObject.class);
+            return jsonObject.toString();
+        } catch (IOException e){
+            e.printStackTrace();
+            return "";
+        }
     }
 
 }

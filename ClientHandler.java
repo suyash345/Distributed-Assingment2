@@ -9,7 +9,8 @@ import java.io.OutputStreamWriter;
 import java.io.IOException;
 import java.io.File;
 import java.io.FileNotFoundException;
-//import com.google.gson.Gson;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 //whenever we rec or send a message we need to increment the lamport clock by one.
 

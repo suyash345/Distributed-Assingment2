@@ -1,25 +1,22 @@
-FILES = AggregationServer.java GETClient.java ContentServer.java ClientHandler.java
+FILES = AggregationServer.java GETClient.java ContentServer.java ClientHandler.java JSON_Parser.java
 JCC = javac
 RM = rm
+LIB = -cp "lib/gson-2.10.1.jar;." # For Windows
 
 default: $(FILES)
-	$(JCC) AggregationServer.java
-	$(JCC) GETClient.java
-	$(JCC) ContentServer.java
-	$(JCC) ClientHandler.java
-
-
-rmi:
-	start rmiregistry & 
+	$(JCC) $(LIB) AggregationServer.java ClientHandler.java
+	$(JCC) $(LIB) GETClient.java
+	$(JCC) $(LIB) ContentServer.java
+	$(JCC) $(LIB) JSON_Parser.java
 
 CServer: ContentServer.class
-	java ContentServer
+	java $(LIB) ContentServer
 
 Client: GETClient.class
-	java GETClient
+	java $(LIB) GETClient
 
-AServer: AggregationServer.class
-	java AggregationServer ClientHandler
-	
+AServer: AggregationServer.class ClientHandler.class
+	java $(LIB) AggregationServer
+
 clean:
 	$(RM) *.class

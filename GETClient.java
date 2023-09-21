@@ -8,8 +8,8 @@ import java.io.OutputStreamWriter;
 import java.util.Scanner;
 import java.io.File;
 import java.io.FileNotFoundException;
-
-//import com.google.gson.Gson;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 public class GETClient {
     public static void main(String[] args)
     {
