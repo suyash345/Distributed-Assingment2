@@ -1,0 +1,1 @@
+dont need synchronziation for content server, as it is not multithreaded

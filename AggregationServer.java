@@ -14,7 +14,8 @@ import java.io.FileNotFoundException;
 
 
 public class AggregationServer {
-    public static void main(String[] args) {
+    public static void main(String[] args)
+    {
         ServerSocket serverSocket = null;
         try {
             serverSocket = new ServerSocket(4567);
@@ -26,6 +27,7 @@ public class AggregationServer {
                 ClientHandler clientHandler = new ClientHandler(socket);
                 Thread thread = new Thread(clientHandler);
                 thread.start();
+
         }
     }  catch (IOException e){
             e.printStackTrace();}
@@ -34,7 +36,8 @@ public class AggregationServer {
         }
 
     }
-    public static void close(ServerSocket serverSocket){
+    public static void close(ServerSocket serverSocket)
+    {
         try{
             if(serverSocket!=null){
                 serverSocket.close();

@@ -11,7 +11,8 @@ import java.io.FileNotFoundException;
 
 //import com.google.gson.Gson;
 public class GETClient {
-    public static void main(String[] args) {
+    public static void main(String[] args)
+    {
         Socket socket = null;
         BufferedReader bufferedReader = null;
         BufferedWriter bufferedWriter = null;
@@ -23,7 +24,7 @@ public class GETClient {
 
             // send get request to Server
             Scanner scanner = new Scanner(System.in);
-            bufferedWriter.write("GET");
+            bufferedWriter.write("GET 0");
             bufferedWriter.newLine();
             bufferedWriter.flush();
             // response from server
@@ -34,7 +35,8 @@ public class GETClient {
             close(socket, bufferedReader, bufferedWriter);
         }
     }
-        public static void close(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter){
+        public static void close(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter)
+        {
             try{
                 if(bufferedReader!=null){
                     bufferedReader.close();

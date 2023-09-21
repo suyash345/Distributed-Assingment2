@@ -12,68 +12,99 @@ import java.io.FileNotFoundException;
 public class ContentServer {
     private static final String SERVER_IP = "localhost";
     private static final int SERVER_PORT = 4567;
+    private static int my_time_Lamport = 0;
+
     public static void main(String[] args) {
         Socket socket = null;
         BufferedReader bufferedReader = null;
         BufferedWriter bufferedWriter = null;
-        try {  
-            socket = new Socket(SERVER_IP, SERVER_PORT);
-            bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-            String dataToSend = readFile();
+        while (true) {
+            try {
+                socket = new Socket(SERVER_IP, SERVER_PORT);
+                bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+                Scanner scanner = new Scanner(System.in);
+                String dataToSend = readFile();
 
-            // for the request
-            bufferedWriter.write("PUT");
-            bufferedWriter.newLine();
-            bufferedWriter.flush();
+                // for the request
+                incrementLamportTime(); //  should only have to increment once, since the PUT and body are in the same request
+                System.out.println(my_time_Lamport);
+                bufferedWriter.write("PUT 0");
+                bufferedWriter.newLine();
+                bufferedWriter.flush();
+                // for the content
+                bufferedWriter.write(dataToSend);
+                bufferedWriter.newLine();
+                bufferedWriter.flush();
 
-            // for the content
-            bufferedWriter.write(dataToSend);
-            bufferedWriter.newLine();
-            bufferedWriter.flush();
+                // to read if the returned value from server is  sucessfull or not?
+                String line = bufferedReader.readLine();
+                System.out.println(line);
+                int time_received_from_server = 2; // have to find in response;
+                manageLamportTime(time_received_from_server);
 
-            // to read if sucessfull or not?
-            String line = bufferedReader.readLine();
-            System.out.println(line);
-
-        } catch (IOException e) {
-            close(socket, bufferedReader, bufferedWriter);
-        }
-    }
-        public static void close(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter){
-            try{
-                if(bufferedReader!=null){
-                    bufferedReader.close();
+                //user input to continue with connections with server.
+                System.out.println("Do you want to send again? (Y/N)");
+                String send_again = scanner.nextLine();
+                if (send_again.equals("Y") || send_again.toUpperCase().equals("Y")) {
+                    continue;
+                } else {
+                    System.out.println("Exiting Content Server");
+                    break;
                 }
-                if(bufferedWriter!=null){
-                    bufferedWriter.close();
-                }
-                if(socket!=null){
-                    socket.close();
-                }
-            } catch(IOException e){
-                e.printStackTrace();
+
+            } catch (IOException e) {
+                close(socket, bufferedReader, bufferedWriter);
             }
         }
+    }
 
-    public static String readFile(){
+    public static void close(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter) {
+        try {
+            if (bufferedReader != null) {
+                bufferedReader.close();
+            }
+            if (bufferedWriter != null) {
+                bufferedWriter.close();
+            }
+            if (socket != null) {
+                socket.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static String readFile() {
         String fileContent = "";
         try {
             File myObj = new File("inputfile.txt");
-            
+
             Scanner myReader = new Scanner(myObj);
             while (myReader.hasNextLine()) {
                 String data = myReader.nextLine();
                 fileContent += data;
-      }
-        myReader.close();
-        return fileContent;
+            }
+            myReader.close();
+            return fileContent;
 
-    } catch (FileNotFoundException e) {
-        System.out.println("An error occurred.");
-        e.printStackTrace();
+        } catch (FileNotFoundException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
+        return "";
     }
-    return "";
-}
+
+    public static void manageLamportTime(int time_received_from_server) {
+        if (time_received_from_server > my_time_Lamport) {
+            my_time_Lamport = time_received_from_server + 1;
+        } else {
+            incrementLamportTime();
+        }
+    }
+
+    public static void incrementLamportTime() {
+        my_time_Lamport = my_time_Lamport + 1;
+    }
 
 }
