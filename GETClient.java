@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 public class GETClient {
     public static void main(String[] args)
     {
@@ -29,7 +30,11 @@ public class GETClient {
             bufferedWriter.flush();
             // response from server
             String line = bufferedReader.readLine();
-            System.out.println(line);
+            JsonParser parser = new JsonParser();
+            JsonObject jsonObject = parser.parse(line).getAsJsonObject();
+            for (String key : jsonObject.keySet()) {
+                System.out.println(key + ": " + jsonObject.get(key).getAsString());
+            }
 
         } catch (IOException e) {
             close(socket, bufferedReader, bufferedWriter);

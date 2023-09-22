@@ -13,12 +13,14 @@ import com.google.gson.JsonObject;
 import java.io.FileWriter;
 import java.io.FileReader;
 import java.util.ArrayList;
+import com.google.gson.JsonParser;
 public class ContentServer {
     private static final String SERVER_IP = "localhost";
     private static final int SERVER_PORT = 4567;
     private static int my_time_Lamport = 0;
 
-    public static void main(String[] args) {
+    public static void main(String[] args)
+    {
         Socket socket = null;
         BufferedReader bufferedReader = null;
         BufferedWriter bufferedWriter = null;
@@ -30,7 +32,6 @@ public class ContentServer {
                 bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
                 Scanner scanner = new Scanner(System.in);
                 String dataToSend = jsonObjectToString();
-                System.out.println(dataToSend);
 
 
                 // for the request
@@ -66,7 +67,8 @@ public class ContentServer {
         }
     }
 
-    public static void close(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter) {
+    public static void close(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter)
+    {
         try {
             if (bufferedReader != null) {
                 bufferedReader.close();
@@ -82,7 +84,8 @@ public class ContentServer {
         }
     }
 
-    public static void manageLamportTime(int time_received_from_server) {
+    public static void manageLamportTime(int time_received_from_server) // manage when receving
+    {
         if (time_received_from_server > my_time_Lamport) {
             my_time_Lamport = time_received_from_server + 1;
         } else {
@@ -94,7 +97,8 @@ public class ContentServer {
         my_time_Lamport = my_time_Lamport + 1;
     }
 
-    public static void convertToJson() {
+    public static void convertToJson()
+    {
         String fileContent = "";
         try {
             File reader = new File("inputfile.txt");
@@ -119,7 +123,8 @@ public class ContentServer {
             e.printStackTrace();
         }
     }
-    public static String jsonObjectToString(){
+    public static String jsonObjectToString()
+    {
         try{
             FileReader fileReader = new FileReader("input.json");
             Gson gson = new Gson();
