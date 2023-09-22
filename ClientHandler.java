@@ -17,13 +17,15 @@ import java.io.FileReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import com.google.gson.JsonSyntaxException;
-//whenever we rec or send a message we need to increment the lamport clock by one.
+import java.io.UnsupportedEncodingException;
+//whenever we rec or send a message we need to increment the lamport clock by one. AFTER RECEVING AND SENDING
 
 public class ClientHandler implements Runnable {
     private Socket socket;
     private static int my_time_Lamport = 0;
     private BufferedReader bufferedReader;
     private BufferedWriter bufferedWriter;
+    private int STATUS;
 
     public ClientHandler(Socket socket) {
         try {
@@ -38,16 +40,17 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         String request = find_request();  // the first line is the type of request PUT/GET, also manages time
+
         while (socket.isConnected() && !socket.isClosed()) {
             try {
                 if (request.equals("GET")) {
                     getMethod(bufferedWriter);
                     return;
                 } else if (request.equals("PUT")) {
-                    //System.out.println("Put Method is being run");
                     putMethod(bufferedReader, bufferedWriter);
                     return;
                 } else {
+                    STATUS = 400;
                     close(socket, bufferedReader, bufferedWriter);
                     return;
                 }
@@ -80,20 +83,26 @@ public class ClientHandler implements Runnable {
             String first_line = bufferedReader.readLine();
             String[] first_line_list = first_line.split(" ");
             request = first_line_list[0];
-            int time_from_server = Integer.parseInt(first_line_list[1]);
-            synchronized (ClientHandler.class) {
-                manageLamportTime(time_from_server);
-                System.out.println("Time is currently" + my_time_Lamport);
+            if(request.equals("GET")){
+                return request;
             }
-
-        } catch (IOException e) {
+            else if(request.equals("PUT")){
+                String line = "";
+                while((line = bufferedReader.readLine()) !=null){ // this reads until there is only JSON to be READ.
+                    if(line.isEmpty()){
+                        break;
+                    }
+                }
+        }} catch (IOException e) {
             e.printStackTrace();
         }
         return request;
     }
 
     public void getMethod(BufferedWriter bufferedWriter) // for get method, no need to send back with lamport time
+
     { //   need to send back most recent data->recvied highest lamport time
+        String data = "";
         try {
             synchronized (ClientHandler.class) {
                 incrementLamportTime();
@@ -101,10 +110,16 @@ public class ClientHandler implements Runnable {
             }
             File reader = new File("dataServer.json");
             Scanner myReader = new Scanner(reader);
-            String data = myReader.nextLine();
-            bufferedWriter.write(data); // whatever that is sent is  here
+
+            while(myReader.hasNextLine()){ // for mutiple lines;
+                data += myReader.nextLine();
+            }
+
+            String getResponse = generateGetResponse(data);
+            bufferedWriter.write(getResponse); // whatever that is sent is  here
             bufferedWriter.newLine();
             bufferedWriter.flush();
+            close(socket,bufferedReader,bufferedWriter);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -117,31 +132,41 @@ public class ClientHandler implements Runnable {
     public void putMethod(BufferedReader bufferedReader, BufferedWriter bufferedWriter) // send back with lamport time
     { //  need to make a stamp with each lamport time.
         try {
-            synchronized (ClientHandler.class) {
-                incrementLamportTime();
-                System.out.println("Time is currently" + my_time_Lamport);
-            } // increment when receving
-
             String data = bufferedReader.readLine(); // for the data that is to be put on server.
+            System.out.println(data);
             String ID = getIdOfJsonString(data);
+
+            String next_line = bufferedReader.readLine(); // lamport time
+            int lamportTimeFromServer = Integer.parseInt(next_line);
+
+            synchronized (ClientHandler.class) {
+                manageLamportTime(lamportTimeFromServer);
+                System.out.println("Time is currently" + my_time_Lamport);
+            }
+
             if (checkIDInServer(ID)) {                      // if id exists, want to delete the before id and  add new.
-                                                            // if it does not just add.
-                                                            // if true, then delete then add
-                                                            // if false just add.
+                // if it does not just add.
+                // if true, then delete then add
+                // if false just add.
                 deleteFromServer(ID);
                 addID(data);
+                STATUS = 200;
             } else {
                 addID(data);
+                STATUS = 200;
             }
 
             synchronized (ClientHandler.class) {
                 incrementLamportTime();
                 System.out.println("Time is currently" + my_time_Lamport);
             } // increment when sending
-            bufferedWriter.write("Got put request and sucessfully inputted into the file");  // whatever is sent is here
+            String putresponse = generatePutResponse();
+            System.out.println(putresponse);
+            bufferedWriter.write(putresponse);  // whatever is sent is here
             bufferedWriter.newLine();
             bufferedWriter.flush();
-        } catch (IOException e) {
+        }
+         catch (IOException e) {
             e.printStackTrace();
         } finally {
             return;
@@ -229,7 +254,27 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-
     }
+    public String generateGetResponse(String data) throws UnsupportedEncodingException{
+        String getResponse = "";
+        getResponse += "HTTP/1.1" + STATUS + "\n";
+        getResponse += "Server: AggregationServer/1.0 + \n";
+        getResponse += "Content-Type: application/json \n";
+        int content_length;
+        byte[] bytes_data = data.getBytes("UTF-8");
+        content_length = bytes_data.length;
+        getResponse += "Content-Length:" + content_length +"\n";
+        getResponse +=  "\n";
+        getResponse += data;
+        return getResponse;
+    }
+    public String generatePutResponse(){
+        String putResponse = "";
+        putResponse += "HTTP1.1" + " " + STATUS + "\n";
+        putResponse += "Server: AggregationServer/1.0 \n";
+        putResponse += Integer.toString(my_time_Lamport) + "\n";
+        return putResponse;
+    }
+
 }
+

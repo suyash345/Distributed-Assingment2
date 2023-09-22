@@ -20,7 +20,11 @@ public class AggregationServer {
     {
         ServerSocket serverSocket = null;
         try {
-            serverSocket = new ServerSocket(4567);
+            Scanner scanner = new Scanner(System.in);
+            System.out.println("what port would you like the server to be?");
+            int port_number = scanner.nextInt();
+            serverSocket = new ServerSocket(port_number);
+            System.out.println("Server is now listening on port " + port_number);
             while(!serverSocket.isClosed()){
                 // accept request
                 Socket socket = serverSocket.accept(); // this is closed in ClientHandler

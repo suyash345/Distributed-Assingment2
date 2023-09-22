@@ -14,9 +14,8 @@ import java.io.FileWriter;
 import java.io.FileReader;
 import java.util.ArrayList;
 import com.google.gson.JsonParser;
+import java.io.UnsupportedEncodingException;
 public class ContentServer {
-    private static final String SERVER_IP = "localhost";
-    private static final int SERVER_PORT = 4567;
     private static int my_time_Lamport = 0;
 
     public static void main(String[] args)
@@ -25,47 +24,54 @@ public class ContentServer {
         BufferedReader bufferedReader = null;
         BufferedWriter bufferedWriter = null;
         convertToJson();
-        while (true) {
             try {
-                socket = new Socket(SERVER_IP, SERVER_PORT);
+                Scanner scanner = new Scanner(System.in);
+                System.out.println("Enter URL (enter localhost for the Aggregation Server)");
+                String servername = scanner.nextLine();
+                System.out.println("Please input the port number");
+                int port_number = scanner.nextInt();
+                String url = "http://" + servername + ":" + port_number;
+                System.out.println("going to: "+url);
+                socket = new Socket(servername, port_number);
+
                 bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-                Scanner scanner = new Scanner(System.in);
                 String dataToSend = jsonObjectToString();
-
+                String Put_Request = makePutRequest(dataToSend);
 
                 // for the request
                 incrementLamportTime(); //  should only have to increment once, since the PUT and body are in the same request
-                System.out.println(my_time_Lamport);
-                bufferedWriter.write("PUT 0");
+                bufferedWriter.write(Put_Request + "\n"+my_time_Lamport);
                 bufferedWriter.newLine();
                 bufferedWriter.flush();
-                // for the content
-                bufferedWriter.write(dataToSend);
-                bufferedWriter.newLine();
-                bufferedWriter.flush();
-
                 // to read if the returned value from server is  sucessfull or not?
-                String line = bufferedReader.readLine();
-                System.out.println(line);
-                int time_received_from_server = 2; // have to find in response;
-                manageLamportTime(time_received_from_server);
 
-                //user input to continue with connections with server.
-                System.out.println("Do you want to send again? (Y/N)");
-                String send_again = scanner.nextLine();
-                if (send_again.equals("Y") || send_again.toUpperCase().equals("Y")) {
-                    continue;
-                } else {
-                    System.out.println("Exiting Content Server");
-                    break;
+                String response ="";
+                String line = "";
+                while ((line = bufferedReader.readLine()) != null) {
+                    if (line.isEmpty()) {
+                        break;
+                    }
+                    response += line;
+                    System.out.println(line);
+                    //bufferedReader.readLine();
                 }
+                String lastLetter = response.substring(response.length() - 1);
+                try{
+                    int time_received_from_server = Integer.parseInt(lastLetter);
+                    manageLamportTime(time_received_from_server);
+                    } // have to find in response;
+                catch (NumberFormatException e) {
+                    System.out.println("The string is not a valid integer.");
+                }
+
+
 
             } catch (IOException e) {
                 close(socket, bufferedReader, bufferedWriter);
             }
         }
-    }
+
 
     public static void close(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter)
     {
@@ -135,5 +141,19 @@ public class ContentServer {
             return "";
         }
     }
+    public static String makePutRequest(String data) throws UnsupportedEncodingException{
+        String putRequest = "";
+        putRequest += "PUT /weather.json HTTP/1.1 \n";
+        putRequest += "User-Agent: ATOMClient/1/0 \n";
+        putRequest += "Content-Type: application/json \n";
+        int content_length;
+        byte[] bytes_data = data.getBytes("UTF-8");
+        content_length = bytes_data.length;
+        putRequest += "Content-Length:" + content_length +"\n";
+        putRequest +=  "\n";
+        putRequest += data;
+        return putRequest;
+    }
+
 
 }
