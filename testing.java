@@ -39,7 +39,25 @@ public class testing {
         System.out.println("NEW TEST Get function with more data\n\n");
         getFunction();
 
+        System.out.println("\nTESTING LAMPORT NOW-----------------------------------------------------------------\n");
         //Lamport Testing
+        my_time_Lamport = 0;
+        System.out.println("Lamport time is set to 0");
+        putFunction(0);
+
+        my_time_Lamport = 10;
+        System.out.println("\n\nLamport time is set to 10");
+        putFunction(0);
+
+        my_time_Lamport = 20;
+        System.out.println("\n\nLamport time is set to 20");
+        putFunction(0);
+
+
+        my_time_Lamport = 5;
+        System.out.println("\n\nLamport time is set to 5");
+        putFunction(0);
+
     }
 
     public static void getFunction(){
@@ -131,6 +149,7 @@ public class testing {
             System.out.println("The first line of request is: " + firstLine);  // This will print "Line 1
             // for the request
             incrementLamportTime(); //  should only have to increment once, since the PUT and body are in the same request
+            System.out.println("Lamport time before sending is: " + Integer.toString(my_time_Lamport));
             bufferedWriter.write(Put_Request + "\n"+my_time_Lamport);
             bufferedWriter.newLine();
             bufferedWriter.flush();
@@ -147,18 +166,22 @@ public class testing {
                 //bufferedReader.readLine();
             }
             System.out.println("The response from the server is: "+response+"\n\n");
-            String lastLetter = response.substring(response.length() - 1);
+            String[] parts = response.split(" ");
+            String lastLetter = parts[parts.length - 1];
             try{
                 int time_received_from_server = Integer.parseInt(lastLetter);
+                System.out.print("Time Received from Server is: "+ Integer.toString(time_received_from_server) + "\n");
                 manageLamportTime(time_received_from_server);
+                System.out.println("Lamport time after receiving is: " + Integer.toString(my_time_Lamport));
+
             } // have to find in response;
             catch (NumberFormatException e) {
                 System.out.println("The string is not a valid integer.");
             }
 
-            } catch (IOException e) {
-                close(socket, bufferedReader, bufferedWriter);
-            }
+        } catch (IOException e) {
+            close(socket, bufferedReader, bufferedWriter);
+        }
     }
 
 
@@ -182,11 +205,11 @@ public class testing {
         FileWriter writer;
         try {
             if(number ==0){
-                 reader = new File("inputfile.txt");
-                 writer = new FileWriter("input.json");}
+                reader = new File("inputfile.txt");
+                writer = new FileWriter("input.json");}
             else{
-                 reader = new File("new_Input.txt");
-                 writer = new FileWriter("new_Input.json");}
+                reader = new File("new_Input.txt");
+                writer = new FileWriter("new_Input.json");}
 
             writer.write("{\n");
             Scanner myReader = new Scanner(reader);
@@ -241,5 +264,3 @@ public class testing {
 
 
 }
-
-
