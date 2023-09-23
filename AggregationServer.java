@@ -13,6 +13,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import java.io.FileWriter;
 
 
 public class AggregationServer {
@@ -28,9 +29,8 @@ public class AggregationServer {
             while(!serverSocket.isClosed()){
                 // accept request
                 Socket socket = serverSocket.accept(); // this is closed in ClientHandler
-                System.out.println("A new client has connected!");
-                // start the clientHandler with a new thread.
-                ClientHandler clientHandler = new ClientHandler(socket);
+
+                ClientHandler clientHandler = new ClientHandler(socket);// start the clientHandler with a new thread.
                 Thread thread = new Thread(clientHandler);
                 thread.start();
 
@@ -44,6 +44,12 @@ public class AggregationServer {
     }
     public static void close(ServerSocket serverSocket)
     {
+        try{
+            FileWriter writer = new FileWriter("dataServer.json");
+            writer.close();
+        } catch (IOException e){
+            e.printStackTrace();
+        }
         try{
             if(serverSocket!=null){
                 serverSocket.close();

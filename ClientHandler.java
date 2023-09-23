@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import com.google.gson.JsonSyntaxException;
 import java.io.UnsupportedEncodingException;
+import java.time.Instant;
 //whenever we rec or send a message we need to increment the lamport clock by one. after RECEVING AND before     SENDING
 
 public class ClientHandler implements Runnable {
@@ -44,20 +45,20 @@ public class ClientHandler implements Runnable {
         while (socket.isConnected() && !socket.isClosed()) {
             try {
                 if (request.equals("GET")) {
-                    STATUS = "200 OK" ;
+                    STATUS = "200 OK " ;
                     getMethod(bufferedWriter);
                     return;
                 } else if (request.equals("PUT")) {
                     File storageFile = new File("dataServer.json");
                     if (!storageFile.exists()) {
-                        STATUS = "201 HTTP_CREATED";
+                        STATUS = "201 HTTP_CREATED ";
                     } else {
-                        STATUS = "200 OK";
+                        STATUS = "200 OK ";
                     }
                     putMethod(bufferedReader, bufferedWriter);
                     return;
                 } else {
-                    STATUS = "400 BAD REQUEST";
+                    STATUS = "400 BAD REQUEST ";
                     close(socket, bufferedReader, bufferedWriter);
                     return;
                 }
@@ -82,17 +83,13 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        // delete file
-        File file = new File("dataServer.json");
-
-        if (file.exists()) {
-            if (file.delete()) {
-                System.out.println("File deleted: dataServer.json");
-            } else {
-                System.out.println("Failed to delete the file.");
-            }
+        // rewrite file
+        try{
+            FileWriter writer = new FileWriter("dataServer.json");
+            writer.close();
+            } catch (IOException e){
+            e.printStackTrace();
         }
-
 
     }
 
@@ -103,9 +100,11 @@ public class ClientHandler implements Runnable {
             String[] first_line_list = first_line.split(" ");
             request = first_line_list[0];
             if(request.equals("GET")){
+                System.out.println("Get Message received");
                 return request;
             }
             else if(request.equals("PUT")){
+                System.out.println("Put Message received");
                 String line = "";
                 while((line = bufferedReader.readLine()) !=null){ // this reads until there is only JSON to be READ.
                     if(line.isEmpty()){
@@ -125,7 +124,6 @@ public class ClientHandler implements Runnable {
         try {
             synchronized (ClientHandler.class) {
                 incrementLamportTime();
-                System.out.println("Time is currently" + my_time_Lamport);
             }
             File reader = new File("dataServer.json");
             Scanner myReader = new Scanner(reader);
@@ -135,10 +133,11 @@ public class ClientHandler implements Runnable {
             }
 
             String getResponse = generateGetResponse(data);
+            System.out.println("The GET response is \n "+ getResponse);
             bufferedWriter.write(getResponse); // whatever that is sent is  here
             bufferedWriter.newLine();
             bufferedWriter.flush();
-            close(socket,bufferedReader,bufferedWriter);
+            //close(socket,bufferedReader,bufferedWriter);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -153,7 +152,7 @@ public class ClientHandler implements Runnable {
         try {
             String data = bufferedReader.readLine(); // for the data that is to be put on server.
             if(data ==null || data.isEmpty()){
-                STATUS = "204 NO CONTENT";
+                STATUS = "204 NO CONTENT ";
             }
             String ID = getIdOfJsonString(data);
 
@@ -162,7 +161,7 @@ public class ClientHandler implements Runnable {
 
             synchronized (ClientHandler.class) {
                 manageLamportTime(lamportTimeFromServer);
-                System.out.println("Time is currently" + my_time_Lamport);
+                System.out.println("Time is now: " + my_time_Lamport);
             }
 
             if (checkIDInServer(ID)) {                      // if id exists, want to delete the before id and  add new.
@@ -177,16 +176,15 @@ public class ClientHandler implements Runnable {
 
             synchronized (ClientHandler.class) {
                 incrementLamportTime();
-                System.out.println("Time is currently" + my_time_Lamport);
             } // increment when sending
             String putresponse = generatePutResponse();
-            System.out.println(putresponse);
+            System.out.println("The PUT response is \n "+ putresponse);
             bufferedWriter.write(putresponse);  // whatever is sent is here
             bufferedWriter.newLine();
             bufferedWriter.flush();
         }
         catch (JsonSyntaxException e){
-            STATUS = "500 INTERNAL SERVER ERROR";
+            STATUS = "500 INTERNAL SERVER ERROR ";
             e.printStackTrace();
         }
          catch (IOException e) {
@@ -247,15 +245,10 @@ public class ClientHandler implements Runnable {
                 JsonParser parser = new JsonParser();
                 JsonObject jsonObject = parser.parse(lines[i]).getAsJsonObject();
                 idValue = jsonObject.get("id").getAsString();
-                System.out.println(idValue);
                 if (!idValue.equals(id)) {
-                    System.out.println("line appended");
                     tempContent.append(lines[i]).append("\n");
-                } else {
-                    System.out.println("executed");
                 }
             }
-            //System.out.print(tempContent);
             try (FileWriter writer = new FileWriter("dataServer.json")) {
                 writer.write(tempContent.toString());
             } catch (IOException e) {
