@@ -1,7 +1,7 @@
 FILES = AggregationServer.java GETClient.java ContentServer.java ClientHandler.java testing.java
 JCC = javac
 RM = rm
-LIB = -cp "lib/gson-2.10.1.jar;." # For Windows
+LIB = -cp "gson-2.10.1.jar;." # For Windows
 
 default: $(FILES)
 	$(JCC) $(LIB) AggregationServer.java ClientHandler.java
