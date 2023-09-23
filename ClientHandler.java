@@ -18,14 +18,14 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import com.google.gson.JsonSyntaxException;
 import java.io.UnsupportedEncodingException;
-//whenever we rec or send a message we need to increment the lamport clock by one. AFTER RECEVING AND SENDING
+//whenever we rec or send a message we need to increment the lamport clock by one. after RECEVING AND before     SENDING
 
 public class ClientHandler implements Runnable {
     private Socket socket;
     private static int my_time_Lamport = 0;
     private BufferedReader bufferedReader;
     private BufferedWriter bufferedWriter;
-    private int STATUS;
+    private String STATUS;
 
     public ClientHandler(Socket socket) {
         try {
@@ -44,13 +44,20 @@ public class ClientHandler implements Runnable {
         while (socket.isConnected() && !socket.isClosed()) {
             try {
                 if (request.equals("GET")) {
+                    STATUS = "200 OK" ;
                     getMethod(bufferedWriter);
                     return;
                 } else if (request.equals("PUT")) {
+                    File storageFile = new File("dataServer.json");
+                    if (!storageFile.exists()) {
+                        STATUS = "201 HTTP_CREATED";
+                    } else {
+                        STATUS = "200 OK";
+                    }
                     putMethod(bufferedReader, bufferedWriter);
                     return;
                 } else {
-                    STATUS = 400;
+                    STATUS = "400 BAD REQUEST";
                     close(socket, bufferedReader, bufferedWriter);
                     return;
                 }
@@ -75,6 +82,18 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        // delete file
+        File file = new File("dataServer.json");
+
+        if (file.exists()) {
+            if (file.delete()) {
+                System.out.println("File deleted: dataServer.json");
+            } else {
+                System.out.println("Failed to delete the file.");
+            }
+        }
+
+
     }
 
     public String find_request() { // this now manages the time also
@@ -133,7 +152,9 @@ public class ClientHandler implements Runnable {
     { //  need to make a stamp with each lamport time.
         try {
             String data = bufferedReader.readLine(); // for the data that is to be put on server.
-            System.out.println(data);
+            if(data ==null || data.isEmpty()){
+                STATUS = "204 NO CONTENT";
+            }
             String ID = getIdOfJsonString(data);
 
             String next_line = bufferedReader.readLine(); // lamport time
@@ -150,10 +171,8 @@ public class ClientHandler implements Runnable {
                 // if false just add.
                 deleteFromServer(ID);
                 addID(data);
-                STATUS = 200;
             } else {
                 addID(data);
-                STATUS = 200;
             }
 
             synchronized (ClientHandler.class) {
@@ -165,6 +184,10 @@ public class ClientHandler implements Runnable {
             bufferedWriter.write(putresponse);  // whatever is sent is here
             bufferedWriter.newLine();
             bufferedWriter.flush();
+        }
+        catch (JsonSyntaxException e){
+            STATUS = "500 INTERNAL SERVER ERROR";
+            e.printStackTrace();
         }
          catch (IOException e) {
             e.printStackTrace();

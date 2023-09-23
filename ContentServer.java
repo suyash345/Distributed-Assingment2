@@ -38,7 +38,7 @@ public class ContentServer {
                 bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
                 String dataToSend = jsonObjectToString();
                 String Put_Request = makePutRequest(dataToSend);
-
+                System.out.println(Put_Request);
                 // for the request
                 incrementLamportTime(); //  should only have to increment once, since the PUT and body are in the same request
                 bufferedWriter.write(Put_Request + "\n"+my_time_Lamport);
