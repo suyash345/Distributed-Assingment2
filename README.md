@@ -7,11 +7,11 @@
 * Note you have to run the Aggregation Server first, prior to the Content Server, and GetClient.
 
 # Unfinished parts
-* There is no 30 second deletion on data that has arrived.
+* There is no 30 second deletion on data that has arrived. (done)
 * automated testing with different error codes
 * automated testing same IDs with updated values, the Aggregation Server, should take the most recent value.
 * The aggregation server does not update most recent data, as if the new data has the same ID, the old data is stored and the new data is thrown away.
-
+  (done)
 # Testing 
 * All these tests are conducted in the testing.java file, where you are able to call functions to emulate both a Client and a ContentServer
 

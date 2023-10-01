@@ -19,6 +19,11 @@ import java.nio.file.Paths;
 import com.google.gson.JsonSyntaxException;
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 //whenever we rec or send a message we need to increment the lamport clock by one. after RECEVING AND before     SENDING
 
 public class ClientHandler implements Runnable {
@@ -27,12 +32,22 @@ public class ClientHandler implements Runnable {
     private BufferedReader bufferedReader;
     private BufferedWriter bufferedWriter;
     private String STATUS;
+    private Map<String, Instant> dictionary = new HashMap<>();
+    private Timer timer;
 
     public ClientHandler(Socket socket) {
         try {
             this.socket = socket;
             this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+            this.timer = new Timer();
+            timer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    System.out.println("executing in timer");
+                    time_checker();
+                }
+            }, 0, 1000);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -67,6 +82,23 @@ public class ClientHandler implements Runnable {
                 close(socket, bufferedReader, bufferedWriter);
             }
         }
+    }
+
+    public void time_checker(){  // runs every second or at the end of execution
+        Instant time_stamp = Instant.now();
+        Duration duration;
+        for (Map.Entry<String, Instant> entry : dictionary.entrySet()){
+            duration  = Duration.between(entry.getValue(), time_stamp);
+            if(duration.getSeconds()>10){
+                System.out.println("executing in checker");
+                dictionary.remove(entry.getKey());
+                deleteFromServer(entry.getKey());
+            }
+        }
+    }
+    public void updateOrAddTime(String ID){
+        Instant time_stamp = Instant.now();
+        dictionary.put(ID,time_stamp);
     }
 
     public void close(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter) {
@@ -117,9 +149,8 @@ public class ClientHandler implements Runnable {
         return request;
     }
 
-    public void getMethod(BufferedWriter bufferedWriter) // for get method, no need to send back with lamport time
-
-    { //   need to send back most recent data->recvied highest lamport time
+    public void getMethod(BufferedWriter bufferedWriter) {// for get method, no need to send back with lamport time
+     //   need to send back most recent data->recvied highest lamport time
         String data = "";
         try {
             synchronized (ClientHandler.class) {
@@ -169,9 +200,12 @@ public class ClientHandler implements Runnable {
                 // if true, then delete then add
                 // if false just add.
                 deleteFromServer(ID);
+                System.out.println(data);
                 addID(data);
+                updateOrAddTime(ID); // adds to hashtable
             } else {
                 addID(data);
+                updateOrAddTime(ID); // adds to hashtable
             }
 
             synchronized (ClientHandler.class) {
@@ -234,9 +268,13 @@ public class ClientHandler implements Runnable {
         return idValue;
     }
 
-    public void deleteFromServer(String id) { // this deletes all insatnces of id.
+    public void deleteFromServer(String id){ // this deletes all insatnces of id.
         String idValue = "";
         StringBuilder tempContent = new StringBuilder();
+        if(!checkIDInServer(id)){ // if id is already in the file then delete
+            return;
+        }
+
         try {
             String fileContent = new String(Files.readAllBytes(Paths.get("dataServer.json")));
             String[] lines = fileContent.split("\\r?\\n");
