@@ -35,19 +35,13 @@ public class ClientHandler implements Runnable {
     private Map<String, Instant> dictionary = new HashMap<>();
     private Timer timer;
 
+
     public ClientHandler(Socket socket) {
         try {
             this.socket = socket;
             this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
             this.timer = new Timer();
-            timer.scheduleAtFixedRate(new TimerTask() {
-                @Override
-                public void run() {
-                    System.out.println("executing in timer");
-                    time_checker();
-                }
-            }, 0, 1000);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -56,7 +50,15 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         String request = find_request();  // the first line is the type of request PUT/GET, also manages time
-
+        if(Thread.currentThread().getName().equals("ClientHandler-0")) { // only main thread runs this so that the server does not get burdened with running the function for everythread.
+            timer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    System.out.println("executing in timer");
+                    time_checker();
+                }
+            }, 0, 1000);
+        }
         while (socket.isConnected() && !socket.isClosed()) {
             try {
                 if (request.equals("GET")) {
@@ -89,7 +91,7 @@ public class ClientHandler implements Runnable {
         Duration duration;
         for (Map.Entry<String, Instant> entry : dictionary.entrySet()){
             duration  = Duration.between(entry.getValue(), time_stamp);
-            if(duration.getSeconds()>10){
+            if(duration.getSeconds()>30){
                 System.out.println("executing in checker");
                 dictionary.remove(entry.getKey());
                 deleteFromServer(entry.getKey());
@@ -242,7 +244,6 @@ public class ClientHandler implements Runnable {
 
 
     public boolean checkIDInServer(String id) { // also want to read and check if id is in server.
-
         try {                                 // if false just add.
             File reader = new File("dataServer.json");
             Scanner myReader = new Scanner(reader);
@@ -271,10 +272,10 @@ public class ClientHandler implements Runnable {
     public void deleteFromServer(String id){ // this deletes all insatnces of id.
         String idValue = "";
         StringBuilder tempContent = new StringBuilder();
-        if(!checkIDInServer(id)){ // if id is already in the file then delete
+        if(!checkIDInServer(id)){ // if id is already in the file then delete, since different threads are attempting to delte from id
             return;
         }
-
+        System.out.println("deleting from server");
         try {
             String fileContent = new String(Files.readAllBytes(Paths.get("dataServer.json")));
             String[] lines = fileContent.split("\\r?\\n");

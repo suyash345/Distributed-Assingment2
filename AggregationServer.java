@@ -17,6 +17,8 @@ import java.io.FileWriter;
 
 
 public class AggregationServer {
+
+    private static int threadIDCounter = 0;
     public static void main(String[] args)
     {
         ServerSocket serverSocket = null;
@@ -31,8 +33,10 @@ public class AggregationServer {
                 Socket socket = serverSocket.accept(); // this is closed in ClientHandler
 
                 ClientHandler clientHandler = new ClientHandler(socket);// start the clientHandler with a new thread.
-                Thread thread = new Thread(clientHandler);
+                String threadName = "ClientHandler-" + threadIDCounter;
+                Thread thread = new Thread(clientHandler,threadName);
                 thread.start();
+                threadIDCounter++;
 
         }
     }  catch (IOException e){
