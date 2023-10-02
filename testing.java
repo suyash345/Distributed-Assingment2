@@ -15,95 +15,188 @@ import java.io.FileReader;
 import java.util.ArrayList;
 import com.google.gson.JsonParser;
 import java.io.UnsupportedEncodingException;
-public class testing {
-    private static int my_time_Lamport = 0;
-    private static Socket socket = null;
-    private static BufferedReader bufferedReader = null;
-    private static BufferedWriter bufferedWriter = null;
-    public static void main(String[] args) {
+import java.net.SocketException;
 
-        try{ // clears the data stored on the dataserver.
-            FileWriter writer = new FileWriter("dataServer.json");
-            writer.close();
-        } catch (IOException e){
+public class testing {
+    public static int my_time_Lamport = 0;
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_BLACK = "\u001B[30m";
+    public static final String ANSI_RED = "\u001B[31m";
+    public static final String ANSI_GREEN = "\u001B[32m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE = "\u001B[34m";
+    public static final String ANSI_PURPLE = "\u001B[35m";
+    public static final String ANSI_CYAN = "\u001B[36m";
+    public static final String ANSI_WHITE = "\u001B[37m";
+
+    public static void main(String[] args) {
+        try {
+            BufferedReader bufferedReader = null;
+            BufferedWriter bufferedWriter = null;
+            Socket socket = null;
+            socket = new Socket("localhost", 4567);
+            bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+            System.out.println(ANSI_BLUE + "Testing HTTP Responses" + ANSI_RESET);
+            getFunction("404"); // not found
+            // 400 other request
+            try {
+                String test = "BAD_REQUEST /weather.json HTTP/1.1 \n";
+                bufferedWriter.write(test);
+                bufferedWriter.newLine();
+                bufferedWriter.flush();
+                String response = "";
+                response = bufferedReader.readLine();
+
+                if (response.contains("400")) {
+                    System.out.println(ANSI_GREEN + "Success! 400 Request works" + ANSI_RESET);
+                } else {
+                    System.out.println(ANSI_RED + "Failed 400" + ANSI_RESET);
+                }
+
+
+                // 500 incorrect JSON
+//                String data = "{\"key\": \"value\"";
+//                String putreq = makePutRequest(data);
+//                bufferedWriter.write(putreq);
+//                bufferedWriter.newLine();
+//                bufferedWriter.flush();
+//                String response2 = "";
+//                response2 = bufferedReader.readLine();
+//                System.out.println(response2);
+//                if (response2.contains("500")) {
+//                    System.out.println(ANSI_GREEN + "Success! 500 Response works" + ANSI_RESET);
+//                } else {
+//                    System.out.println(ANSI_RED + "Failed 500" + ANSI_RESET);
+//                }
+
+            }
+            catch(SocketException e){
+                e.printStackTrace();
+            }
+
+
+            System.out.println("\n" + ANSI_BLUE + "Testing Lamport Times" + ANSI_RESET);
+            my_time_Lamport = 0;
+            putFunction(0, 0);
+            my_time_Lamport = 10;
+            putFunction(0, 0);
+
+
+            my_time_Lamport = 20;
+            putFunction(0, 0);
+
+            my_time_Lamport = 5;
+            putFunction(0, 0);
+
+
+            System.out.println("\n" + ANSI_BLUE + "Testing Multiple Content Servers at once" + ANSI_RESET);
+
+            int numberOfThreads = 5;
+            ArrayList<Thread> putthreads = new ArrayList<>();
+            for (int i = 0; i < numberOfThreads; i++) {
+                final int threadIndex = i;
+                Thread thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if ((threadIndex % 2) == 0) {
+                            putFunction(0, 1);
+                        } else {
+                            putFunction(1, 1);
+                        }
+                    }
+                });
+                putthreads.add(thread);
+                thread.start();
+            }
+
+            for (Thread thread : putthreads) {
+                try {
+                    thread.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            System.out.println(ANSI_GREEN + "Success! All Put threads have finished." + ANSI_RESET);
+
+            System.out.println("\n" + ANSI_BLUE + "Testing Multiple Clients at once " + ANSI_RESET);
+            ArrayList<Thread> getthreads = new ArrayList<>();
+
+            for (int i = 0; i < numberOfThreads; i++) {
+                Thread thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        getFunction("200");
+                    }
+                });
+                getthreads.add(thread);
+                thread.start();
+            }
+
+
+            for (Thread thread : getthreads) {
+                try {
+                    thread.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            System.out.println(ANSI_GREEN + "Success! All Get threads have finished." + ANSI_RESET);
+        } catch (IOException e) {
             e.printStackTrace();
         }
-
-        // Testing Put/Get Functions with numerous clients and contentServers
-        System.out.println("NEW TEST Put Function\n\n");
-        putFunction(0);
-        System.out.println("NEW TEST Get Function\n\n");
-        getFunction();
-        System.out.println("NEW TEST Adding more data with Put Function\n\n");
-        putFunction(1);
-        System.out.println("NEW TEST Get function with more data\n\n");
-        getFunction();
-
-        System.out.println("\nTESTING LAMPORT NOW-----------------------------------------------------------------\n");
-        //Lamport Testing
-        my_time_Lamport = 0;
-        System.out.println("Lamport time is set to 0");
-        putFunction(0);
-
-        my_time_Lamport = 10;
-        System.out.println("\n\nLamport time is set to 10");
-        putFunction(0);
-
-        my_time_Lamport = 20;
-        System.out.println("\n\nLamport time is set to 20");
-        putFunction(0);
-
-
-        my_time_Lamport = 5;
-        System.out.println("\n\nLamport time is set to 5");
-        putFunction(0);
-
     }
-
-    public static void getFunction(){
+    public static void getFunction(String input){
+        BufferedReader bufferedReader = null;
+        BufferedWriter bufferedWriter = null;
+        Socket socket = null;
         try {
             // connect to server and make the input and output obejcts.
             socket = new Socket("localhost", 4567);
-
             bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
 
             // send get request to Server
             String getRequest = makeGetRequest();
             String firstLine = getRequest.split("\n")[0];
-            System.out.println("The first line of the get request is: " + firstLine)    ;  // This will print "Line 1
+            System.out.println(ANSI_YELLOW+"Running Get Function"+ANSI_RESET);
 
             bufferedWriter.write(getRequest);
             bufferedWriter.newLine();
             bufferedWriter.flush();
-            // response from server
             String header = "";
+            header = bufferedReader.readLine();
+            check(header,input);
             while((header = bufferedReader.readLine()) !=null) { // this reads until there is only JSON to be READ.
                 if (header.isEmpty()) {
                     break;
                 }
             }
-            System.out.println("Success GET OPERATION. Response Body is here");
+            if(Integer.parseInt(input)<300){
             String line = bufferedReader.readLine();
             String[] splitLine = line.split("\\}");
             for(int i =0;i<splitLine.length;i++){
-                System.out.println("\n");
                 splitLine[i] = splitLine[i]+"}";
                 JsonParser parser = new JsonParser();
                 JsonObject jsonObject = parser.parse(splitLine[i]).getAsJsonObject();
-                for (String key : jsonObject.keySet()) {
-                    System.out.println(key + ": " + jsonObject.get(key).getAsString());
-                }
 
-            }
-
+            } }
 
 
         } catch (IOException e) {
             close(socket, bufferedReader, bufferedWriter);
         }
+
     }
 
+
+
+    public static void check(String line, String input){
+        if(line.contains(input)){
+            System.out.println(ANSI_GREEN+"Success" + input + " Function!"+ANSI_RESET);
+        }
+    }
     public static void close(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter)
     {
         try{
@@ -131,14 +224,14 @@ public class testing {
         return getRequest;
     }
 
-
 //    Put function here
 
 
-
-    public static void putFunction(int test_num) {
-
+    public static void putFunction(int test_num, int display_response) {
         convertToJson(test_num);
+        BufferedReader bufferedReader = null;
+        BufferedWriter bufferedWriter = null;
+        Socket socket = null;
         try {
             socket = new Socket("localhost", 4567);
             bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -146,15 +239,15 @@ public class testing {
             String dataToSend = jsonObjectToString(test_num);
             String Put_Request = makePutRequest(dataToSend);
             String firstLine = Put_Request.split("\n")[0];
-            System.out.println("The first line of request is: " + firstLine);  // This will print "Line 1
+
             // for the request
             incrementLamportTime(); //  should only have to increment once, since the PUT and body are in the same request
-            System.out.println("Lamport time before sending is: " + Integer.toString(my_time_Lamport));
+
             bufferedWriter.write(Put_Request + "\n"+my_time_Lamport);
             bufferedWriter.newLine();
             bufferedWriter.flush();
+            System.out.println(ANSI_YELLOW+"Running Put Function with lamport time "+Integer.toString(my_time_Lamport)+ANSI_RESET);
             // to read if the returned value from server is  sucessfull or not?
-
             String response ="";
             String line = "";
             while ((line = bufferedReader.readLine()) != null) {
@@ -162,17 +255,24 @@ public class testing {
                     break;
                 }
                 response += line;
-
                 //bufferedReader.readLine();
             }
-            System.out.println("The response from the server is: "+response+"\n\n");
+            if(display_response==1){
+                System.out.println("The response from the server is: "+response);
+                }
             String[] parts = response.split(" ");
             String lastLetter = parts[parts.length - 1];
             try{
                 int time_received_from_server = Integer.parseInt(lastLetter);
-                System.out.print("Time Received from Server is: "+ Integer.toString(time_received_from_server) + "\n");
                 manageLamportTime(time_received_from_server);
-                System.out.println("Lamport time after receiving is: " + Integer.toString(my_time_Lamport));
+                if(display_response==0) {
+                    System.out.print("Time Received from Server is: " + Integer.toString(time_received_from_server) + "\n");
+                    System.out.println("Lamport time after receiving is: " + Integer.toString(my_time_Lamport));
+                }
+                if(time_received_from_server>=my_time_Lamport-1 && display_response==0){
+                    System.out.println(ANSI_GREEN + "Success" +ANSI_RESET);
+                }
+
 
             } // have to find in response;
             catch (NumberFormatException e) {

@@ -1,4 +1,6 @@
-# How to Run
+`# How to Run
+* The version that is submitted has a makefile that only complies on Mac/Linux. Therefore, to run on windows change the makefile line  ___LIB = -cp "gson-2.10.1.jar:."___ to ___LIB = -cp "gson-2.10.1.jar;."___
+* It is also recommended that the Program is to be run either on Windows Powershell or on Mac terminal to see the colours for testing
 * first to compile all files use run ___make___
 * To run the Aggregation Server use ___make AServer___. 
 * To run the Content Server use ___make CServer___ 
@@ -12,6 +14,9 @@
 * automated testing same IDs with updated values, the Aggregation Server, should take the most recent value.
 * The aggregation server does not update most recent data, as if the new data has the same ID, the old data is stored and the new data is thrown away.
   (done)
+
+
+
 # Testing 
 * All these tests are conducted in the testing.java file, where you are able to call functions to emulate both a Client and a ContentServer
 
@@ -20,10 +25,10 @@
 * For example if a aggregation server is receiving a request, the whole request is displayed after receiving it, 
 and when a ContentServer/Client has received the response, the response is displayed on their side.
 * To test further on the responses received we are able to send a request with other types of request. 
-For example when we input a PUT request with no body, the response should be 204, or when a request is not a get or put
+For example when we input a PUT request with nobody, the response should be 204, or when a request is not a get or put
 the response should be 400.
 * This ensures that text sending works, and that basic communication works.
-
+* In form of __The response from the server is: HTTP1.1 200 OK Server: AggregationServer/1.0 3__, where is the last Lamport Time
 ### Lamport Time
 * To Test the Lamport Time we compare the times before and after the get/put responses and requests. 
 The code displays the lamport time before and after the request. 
@@ -41,3 +46,4 @@ This data can then be checked by the getClient run after where the response has 
 ### Testing for failure recovery testing.
 * To test for this use ___CTRL + C___ to stop the server, and the data should still remain. 
 
+`

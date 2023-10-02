@@ -42,6 +42,10 @@ public class GETClient {
                 if (header.isEmpty()) {
                     break;
                 }
+                if(header.contains("404")){
+                    System.out.println(header);
+                    return;
+                }
             }
             String line = bufferedReader.readLine();
             String[] splitLine = line.split("\\}");

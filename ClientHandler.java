@@ -35,7 +35,6 @@ public class ClientHandler implements Runnable {
     private Map<String, Instant> dictionary = new HashMap<>();
     private Timer timer;
 
-
     public ClientHandler(Socket socket) {
         try {
             this.socket = socket;
@@ -62,12 +61,12 @@ public class ClientHandler implements Runnable {
         while (socket.isConnected() && !socket.isClosed()) {
             try {
                 if (request.equals("GET")) {
-                    STATUS = "200 OK " ;
+                    STATUS = "200 OK ";
                     getMethod(bufferedWriter);
-                    return;
+                    close(socket, bufferedReader, bufferedWriter);
                 } else if (request.equals("PUT")) {
                     File storageFile = new File("dataServer.json");
-                    if (!storageFile.exists()) {
+                    if (Thread.currentThread().getName().equals("ClientHandler-0")) {
                         STATUS = "201 HTTP_CREATED ";
                     } else {
                         STATUS = "200 OK ";
@@ -76,8 +75,11 @@ public class ClientHandler implements Runnable {
                     return;
                 } else {
                     STATUS = "400 BAD REQUEST ";
+                    bufferedWriter.write(STATUS);
+                    bufferedWriter.newLine();
+                    bufferedWriter.flush();
                     close(socket, bufferedReader, bufferedWriter);
-                    return;
+
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -106,12 +108,15 @@ public class ClientHandler implements Runnable {
     public void close(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter) {
         try {
             if (socket != null) {
+                System.out.println("closing Socket");
                 socket.close();
             }
             if (bufferedReader != null) {
+                System.out.println("closing Reader");
                 bufferedReader.close();
             }
             if (bufferedWriter != null) {
+                System.out.println("closing Writer");
                 bufferedWriter.close();
             }
         } catch (IOException e) {
@@ -164,13 +169,21 @@ public class ClientHandler implements Runnable {
             while(myReader.hasNextLine()){ // for mutiple lines;
                 data += myReader.nextLine();
             }
+            if (data.equals("")){
+                System.out.println("404 NOT FOUND");
+                STATUS = "404 NOT FOUND";
+                bufferedWriter.write(STATUS);
+                bufferedWriter.newLine();
+                bufferedWriter.flush();
+                return;
+            }
 
             String getResponse = generateGetResponse(data);
             System.out.println("The GET response is \n "+ getResponse);
             bufferedWriter.write(getResponse); // whatever that is sent is  here
             bufferedWriter.newLine();
             bufferedWriter.flush();
-            //close(socket,bufferedReader,bufferedWriter);
+            close(socket,bufferedReader,bufferedWriter);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -186,6 +199,10 @@ public class ClientHandler implements Runnable {
             String data = bufferedReader.readLine(); // for the data that is to be put on server.
             if(data ==null || data.isEmpty()){
                 STATUS = "204 NO CONTENT ";
+                bufferedWriter.write(STATUS);
+                bufferedWriter.newLine();
+                bufferedWriter.flush();
+                return;
             }
             String ID = getIdOfJsonString(data);
 
@@ -221,7 +238,9 @@ public class ClientHandler implements Runnable {
         }
         catch (JsonSyntaxException e){
             STATUS = "500 INTERNAL SERVER ERROR ";
-            e.printStackTrace();
+            bufferedWriter.write(STATUS);  // whatever is sent is here
+            bufferedWriter.newLine();
+            bufferedWriter.flush();
         }
          catch (IOException e) {
             e.printStackTrace();
