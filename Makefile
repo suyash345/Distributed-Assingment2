@@ -7,7 +7,7 @@ default: $(FILES)
 	$(JCC) $(LIB) AggregationServer.java ClientHandler.java
 	$(JCC) $(LIB) GETClient.java
 	$(JCC) $(LIB) ContentServer.java
-	$(JCC) $(LIB) testing.java
+
 
 CServer: ContentServer.class
 	java $(LIB) ContentServer
@@ -18,7 +18,10 @@ Client: GETClient.class
 AServer: AggregationServer.class ClientHandler.class
 	java $(LIB) AggregationServer
 
-Test: testing.java
+CompileTest: testing.java
+	$(JCC) $(LIB) testing.java
+
+Test: testing.class
 	java $(LIB) testing
 clean:
 	$(RM) *.class

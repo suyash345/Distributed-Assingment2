@@ -34,9 +34,11 @@ public class ClientHandler implements Runnable {
     private String STATUS;
     private Map<String, Instant> dictionary = new HashMap<>();
     private Timer timer;
+    private boolean flag = false;
 
     public ClientHandler(Socket socket) {
         try {
+            readfile();
             this.socket = socket;
             this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
@@ -49,15 +51,14 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         String request = find_request();  // the first line is the type of request PUT/GET, also manages time
-        if(Thread.currentThread().getName().equals("ClientHandler-0")) { // only main thread runs this so that the server does not get burdened with running the function for everythread.
+        System.out.println(Thread.currentThread().getName());
+            System.out.println("exexuted");
             timer.scheduleAtFixedRate(new TimerTask() {
                 @Override
                 public void run() {
-                    System.out.println("executing in timer");
                     time_checker();
                 }
             }, 0, 1000);
-        }
         while (socket.isConnected() && !socket.isClosed()) {
             try {
                 if (request.equals("GET")) {
@@ -66,7 +67,7 @@ public class ClientHandler implements Runnable {
                     close(socket, bufferedReader, bufferedWriter);
                 } else if (request.equals("PUT")) {
                     File storageFile = new File("dataServer.json");
-                    if (Thread.currentThread().getName().equals("ClientHandler-0")) {
+                    if (!storageFile.exists()) {
                         STATUS = "201 HTTP_CREATED ";
                     } else {
                         STATUS = "200 OK ";
@@ -79,7 +80,6 @@ public class ClientHandler implements Runnable {
                     bufferedWriter.newLine();
                     bufferedWriter.flush();
                     close(socket, bufferedReader, bufferedWriter);
-
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -88,17 +88,18 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    public void time_checker(){  // runs every second or at the end of execution
+    public void time_checker(){   // runs every second or at the end of execution
         Instant time_stamp = Instant.now();
         Duration duration;
+
         for (Map.Entry<String, Instant> entry : dictionary.entrySet()){
             duration  = Duration.between(entry.getValue(), time_stamp);
             if(duration.getSeconds()>30){
-                System.out.println("executing in checker");
-                dictionary.remove(entry.getKey());
                 deleteFromServer(entry.getKey());
+                //dictionary.remove(entry.getKey());
             }
         }
+        flag = true;
     }
     public void updateOrAddTime(String ID){
         Instant time_stamp = Instant.now();
@@ -108,25 +109,15 @@ public class ClientHandler implements Runnable {
     public void close(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter) {
         try {
             if (socket != null) {
-                System.out.println("closing Socket");
                 socket.close();
             }
             if (bufferedReader != null) {
-                System.out.println("closing Reader");
                 bufferedReader.close();
             }
             if (bufferedWriter != null) {
-                System.out.println("closing Writer");
                 bufferedWriter.close();
             }
         } catch (IOException e) {
-            e.printStackTrace();
-        }
-        // rewrite file
-        try{
-            FileWriter writer = new FileWriter("dataServer.json");
-            writer.close();
-            } catch (IOException e){
             e.printStackTrace();
         }
 
@@ -157,7 +148,7 @@ public class ClientHandler implements Runnable {
     }
 
     public void getMethod(BufferedWriter bufferedWriter) {// for get method, no need to send back with lamport time
-     //   need to send back most recent data->recvied highest lamport time
+        //   need to send back most recent data->recvied highest lamport time
         String data = "";
         try {
             synchronized (ClientHandler.class) {
@@ -169,21 +160,15 @@ public class ClientHandler implements Runnable {
             while(myReader.hasNextLine()){ // for mutiple lines;
                 data += myReader.nextLine();
             }
-            if (data.equals("")){
-                System.out.println("404 NOT FOUND");
-                STATUS = "404 NOT FOUND";
-                bufferedWriter.write(STATUS);
-                bufferedWriter.newLine();
-                bufferedWriter.flush();
-                return;
-            }
 
             String getResponse = generateGetResponse(data);
-            System.out.println("The GET response is \n "+ getResponse);
+
+            //System.out.println("The GET response is \n "+ getResponse);
             bufferedWriter.write(getResponse); // whatever that is sent is  here
             bufferedWriter.newLine();
             bufferedWriter.flush();
-            close(socket,bufferedReader,bufferedWriter);
+
+            //close(socket,bufferedReader,bufferedWriter);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -192,6 +177,22 @@ public class ClientHandler implements Runnable {
         }
 
     }
+    public void readfile(){
+        try {                                 // if false just add.
+            File reader = new File("dataServer.json");
+            Scanner myReader = new Scanner(reader);
+
+            while (myReader.hasNextLine()) {
+                String line = myReader.nextLine();
+                JsonParser parser = new JsonParser();
+                JsonObject jsonObject = parser.parse(line).getAsJsonObject();
+                String id = jsonObject.get("id").getAsString();
+                updateOrAddTime(id);
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
 
     public void putMethod(BufferedReader bufferedReader, BufferedWriter bufferedWriter) // send back with lamport time
     { //  need to make a stamp with each lamport time.
@@ -199,10 +200,6 @@ public class ClientHandler implements Runnable {
             String data = bufferedReader.readLine(); // for the data that is to be put on server.
             if(data ==null || data.isEmpty()){
                 STATUS = "204 NO CONTENT ";
-                bufferedWriter.write(STATUS);
-                bufferedWriter.newLine();
-                bufferedWriter.flush();
-                return;
             }
             String ID = getIdOfJsonString(data);
 
@@ -211,7 +208,7 @@ public class ClientHandler implements Runnable {
 
             synchronized (ClientHandler.class) {
                 manageLamportTime(lamportTimeFromServer);
-                System.out.println("Time is now: " + my_time_Lamport);
+                System.out.println("Time is now: " + my_time_Lamport+ "\n");
             }
 
             if (checkIDInServer(ID)) {                      // if id exists, want to delete the before id and  add new.
@@ -219,7 +216,7 @@ public class ClientHandler implements Runnable {
                 // if true, then delete then add
                 // if false just add.
                 deleteFromServer(ID);
-                System.out.println(data);
+               // System.out.println(data);
                 addID(data);
                 updateOrAddTime(ID); // adds to hashtable
             } else {
@@ -231,7 +228,7 @@ public class ClientHandler implements Runnable {
                 incrementLamportTime();
             } // increment when sending
             String putresponse = generatePutResponse();
-            System.out.println("The PUT response is \n "+ putresponse);
+            //System.out.println("The PUT response is \n "+ putresponse);
             bufferedWriter.write(putresponse);  // whatever is sent is here
             bufferedWriter.newLine();
             bufferedWriter.flush();
@@ -241,8 +238,9 @@ public class ClientHandler implements Runnable {
             bufferedWriter.write(STATUS);  // whatever is sent is here
             bufferedWriter.newLine();
             bufferedWriter.flush();
+            close(socket,bufferedReader,bufferedWriter);
         }
-         catch (IOException e) {
+        catch (IOException e) {
             e.printStackTrace();
         } finally {
             return;
@@ -294,7 +292,6 @@ public class ClientHandler implements Runnable {
         if(!checkIDInServer(id)){ // if id is already in the file then delete, since different threads are attempting to delte from id
             return;
         }
-        System.out.println("deleting from server");
         try {
             String fileContent = new String(Files.readAllBytes(Paths.get("dataServer.json")));
             String[] lines = fileContent.split("\\r?\\n");
@@ -322,6 +319,7 @@ public class ClientHandler implements Runnable {
 
     public void addID(String data) {
         try {
+            //System.out.println("adding data");
             FileWriter writer = new FileWriter("dataServer.json", true);
             writer.write(data + "\n");
             writer.close();
@@ -347,8 +345,10 @@ public class ClientHandler implements Runnable {
         putResponse += "HTTP1.1" + " " + STATUS + "\n";
         putResponse += "Server: AggregationServer/1.0 \n";
         putResponse += Integer.toString(my_time_Lamport) + "\n";
+        //System.out.println(putResponse);
         return putResponse;
     }
+
 
 }
 
